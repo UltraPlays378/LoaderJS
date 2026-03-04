@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Stream Loader</title>
+    <style>
+        body { 
+            background: #121212; 
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .loader-wrapper {
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        #loader-container {
+            width: 100%;
+            height: 32px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            margin-bottom: 20px;
+        }
+
+        #loader-fill {
+            width: 0%;
+            height: 100%;
+            background-color: #e74c3c;
+            transition: width 0.15s ease-out, background-color 0.3s ease;
+        }
+
+        #loader-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+
+        #file-link {
+            padding: 10px 20px;
+            background: #2ecc71;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            display: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loader-wrapper">
+        <div id="loader-container">
+            <div id="loader-fill"></div>
+            <div id="loader-text">READY TO SYNC</div>
+        </div>
+        <a id="file-link" href="#">DOWNLOAD COMPLETED FILE</a>
+    </div>
+
+    <script>
+        const targetUrl = 'https://nbg1-speed.hetzner.com/100MB.bin';
+
+        // Working binary-stream CORS proxy
+        const proxiedUrl = `https://cors.isomorphic-git.org/${targetUrl}`;
+
+        async function startDownload() {
+            const fill = document.getElementById('loader-fill');
+            const text = document.getElementById('loader-text');
+            const link = document.getElementById('file-link');
+
+            try {
+                const response = await fetch(proxiedUrl);
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                // Hetzner 100MB file size (fixed)
+                const contentLength = 104857600;
+
+                const reader = response.body.getReader();
+                let receivedLength = 0;
+                let chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    chunks.push(value);
+                    receivedLength += value.length;
+
+                    const step = (receivedLength / contentLength) * 100;
+                    fill.style.width = `${step}%`;
+                    text.innerText = `${Math.round(step)}% SYNCED`;
+                }
+
+                const blob = new Blob(chunks);
+                const downloadUrl = URL.createObjectURL(blob);
+
+                text.innerText = "SYNC COMPLETE";
+                fill.style.backgroundColor = "#2ecc71";
+
+                link.href = downloadUrl;
+                link.download = "hetzner_100MB.bin";
+                link.style.display = "inline-block";
+
+            } catch (error) {
+                console.error("Transfer failed:", error);
+                text.innerText = "SYNC ERROR";
+                fill.style.backgroundColor = "#ff0000";
+            }
+        }
+
+        startDownload();
+    </script>
+
+</body>
+</html>
